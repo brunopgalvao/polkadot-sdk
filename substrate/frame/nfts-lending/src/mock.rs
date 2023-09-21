@@ -84,10 +84,10 @@ impl pallet_balances::Config for Test {
 	type MaxLocks = ();
 	type MaxReserves = ConstU32<50>;
 	type ReserveIdentifier = [u8; 8];
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type MaxHolds = ConstU32<1>;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ();
-	type RuntimeHoldReason = RuntimeHoldReason;
-	type MaxHolds = ();
 }
 parameter_types! {
 	pub storage Features: PalletFeatures = PalletFeatures::all_enabled();
