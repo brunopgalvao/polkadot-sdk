@@ -27,6 +27,7 @@ sp-std = { path = "../../primitives/std", default-features = false}
 
 [dev-dependencies]
 pallet-balances = { path = "../balances" }
+pallet-nfts = { path = "../nfts" }
 sp-keystore = { path = "../../primitives/keystore" }
 
 [features]
