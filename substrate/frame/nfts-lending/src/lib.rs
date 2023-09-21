@@ -37,7 +37,6 @@ pub use pallet::*;
 pub use scale_info::Type;
 pub use types::*;
 
-
 /// The log target of this pallet.
 pub const LOG_TARGET: &'static str = "runtime::nfts-lending";
 
@@ -100,7 +99,6 @@ pub mod pallet {
 				ItemId = Self::NftId,
 				CollectionId = Self::NftCollectionId,
 			> + Transfer<Self::AccountId>;
-
 	}
 
 	/// Storage for Nfts that are lendable
@@ -123,7 +121,6 @@ pub mod pallet {
 		(T::NftCollectionId, T::NftId),
 		BorrowingDetails<T::AccountId>,
 	>;
-	
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -148,7 +145,6 @@ pub mod pallet {
 			nft_collection: T::NftCollectionId,
 			nft_id: T::NftId,
 		},
-
 	}
 
 	#[pallet::error]
@@ -165,6 +161,8 @@ pub mod pallet {
 		BorrowingPeriodLessThanMinPeriod,
 		/// The borrowing period is greater than the maximum period.
 		BorrowingPeriodGreaterThanMaxPeriod,
+		/// The min_period a NFT can be lent is greater than max_period.
+		MinPeriodGreaterThanMaxPeriod,
 	}
 
 	/// A reason for the pallet placing a hold on funds.
@@ -209,8 +207,12 @@ pub mod pallet {
 				T::Nfts::owner(&nft_collection_id, &nft_id).ok_or(Error::<T>::NftNotFound)?;
 			ensure!(nft_owner == who, Error::<T>::NoPermission);
 
+			ensure!(min_period < max_period, Error::<T>::MinPeriodGreaterThanMaxPeriod);
+
 			let deposit = T::Deposit::get();
 			T::Currency::hold(&HoldReason::LendableNft.into(), &nft_owner, deposit)?;
+
+			// TODO: Should we check if NFT is locked already (Example from a royalties pallet)
 			Self::do_lock_nft(nft_collection_id, nft_id)?;
 
 			LendableNfts::<T>::insert(
@@ -223,7 +225,6 @@ pub mod pallet {
 					deposit_owner: nft_owner.clone(),
 				},
 			);
-
 
 			Self::deposit_event(Event::Lendable {
 				nft_collection: nft_collection_id,
@@ -257,32 +258,39 @@ pub mod pallet {
 			borrowing_period: u64,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			
+
 			// Ensure that the NFT exists in the LendableNfts storage
-			ensure!(LendableNfts::<T>::contains_key((nft_collection_id, nft_id)), Error::<T>::LendableNftNotFound);
+			ensure!(
+				LendableNfts::<T>::contains_key((nft_collection_id, nft_id)),
+				Error::<T>::LendableNftNotFound
+			);
 
 			// Ensure that the NFT is not already lent
-			ensure!(!LentNfts::<T>::contains_key((nft_collection_id, nft_id)), Error::<T>::NftAlreadyLent);
+			ensure!(
+				!LentNfts::<T>::contains_key((nft_collection_id, nft_id)),
+				Error::<T>::NftAlreadyLent
+			);
 
 			// Get the min_period and max_period from the LendableNfts storage
-			let Details { min_period, max_period, .. } = LendableNfts::<T>::get((nft_collection_id, nft_id)).ok_or(Error::<T>::LendableNftNotFound)?;
+			let Details { min_period, max_period, .. } =
+				LendableNfts::<T>::get((nft_collection_id, nft_id))
+					.ok_or(Error::<T>::LendableNftNotFound)?;
 
 			ensure!(borrowing_period >= min_period, Error::<T>::BorrowingPeriodLessThanMinPeriod);
-			ensure!(borrowing_period <= max_period, Error::<T>::BorrowingPeriodGreaterThanMaxPeriod);
+			ensure!(
+				borrowing_period <= max_period,
+				Error::<T>::BorrowingPeriodGreaterThanMaxPeriod
+			);
 
-			
 			// Add Lendable NFT to LentNfts storage
 			LentNfts::<T>::insert(
 				(nft_collection_id, nft_id),
-				BorrowingDetails {
-					borrowing_period,
-					borrower: who.clone(),
-				},
+				BorrowingDetails { borrowing_period, borrower: who.clone() },
 			);
 
 			// TODO: Vesting logic to be added here
-			// Vest for the borrowing period with the percentage set to the details.price_per_block for the lendable NFT
-			// https://paritytech.github.io/polkadot-sdk/master/frame_support/traits/tokens/currency/trait.VestingSchedule.html
+			// Vest for the borrowing period with the percentage set to the details.price_per_block
+			// for the lendable NFT https://paritytech.github.io/polkadot-sdk/master/frame_support/traits/tokens/currency/trait.VestingSchedule.html
 
 			Self::deposit_event(Event::Lent {
 				nft_collection: nft_collection_id,
@@ -292,7 +300,6 @@ pub mod pallet {
 			});
 
 			Ok(())
-
 		}
 
 		#[pallet::call_index(2)]
@@ -304,13 +311,21 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			ensure!(T::Nfts::owner(&nft_collection_id, &nft_id) == Some(who.clone()), Error::<T>::NoPermission);
+			ensure!(
+				T::Nfts::owner(&nft_collection_id, &nft_id) == Some(who.clone()),
+				Error::<T>::NoPermission
+			);
 
-			ensure!(LendableNfts::<T>::contains_key((nft_collection_id, nft_id)), Error::<T>::LendableNftNotFound);
+			ensure!(
+				LendableNfts::<T>::contains_key((nft_collection_id, nft_id)),
+				Error::<T>::LendableNftNotFound
+			);
 
 			Self::do_unlock_nft(nft_collection_id, nft_id, &who)?;
 
-			let Details { deposit, deposit_owner, .. } = LendableNfts::<T>::take((nft_collection_id, nft_id)).ok_or(Error::<T>::LendableNftNotFound)?;
+			let Details { deposit, deposit_owner, .. } =
+				LendableNfts::<T>::take((nft_collection_id, nft_id))
+					.ok_or(Error::<T>::LendableNftNotFound)?;
 
 			T::Currency::release(
 				&HoldReason::LendableNft.into(),
@@ -319,10 +334,7 @@ pub mod pallet {
 				BestEffort,
 			)?;
 
-			Self::deposit_event(Event::NotLendable {
-				nft_collection: nft_collection_id,
-				nft_id,
-			});
+			Self::deposit_event(Event::NotLendable { nft_collection: nft_collection_id, nft_id });
 
 			Ok(())
 		}
@@ -343,6 +355,5 @@ pub mod pallet {
 			T::Nfts::enable_transfer(&nft_collection_id, &nft_id)?;
 			T::Nfts::transfer(&nft_collection_id, &nft_id, account)
 		}
-
 	}
 }

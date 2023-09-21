@@ -40,8 +40,8 @@ type AccountId = <AccountPublic as IdentifyAccount>::AccountId;
 
 // Configure a mock runtime to test the pallet.
 construct_runtime!(
-	pub enum Test 
-    {
+	pub enum Test
+	{
 		System: frame_system,
 		Balances: pallet_balances,
 		Nfts: pallet_nfts,
@@ -129,8 +129,8 @@ impl pallet_nfts::Config for Test {
 impl Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
-    type RuntimeHoldReason = RuntimeHoldReason;
-    type Deposit = ConstU64<1>;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type Deposit = ConstU64<1>;
 	type NftCollectionId = <Self as pallet_nfts::Config>::CollectionId;
 	type NftId = <Self as pallet_nfts::Config>::ItemId;
 	type Nfts = Nfts;
@@ -138,7 +138,7 @@ impl Config for Test {
 
 // Build genesis storage according to the mock runtime.
 pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
-    let t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+	let t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));

@@ -18,13 +18,11 @@
 //! Tests for the NFTs Lending pallet.
 
 use crate::{mock::*, Error, Event as NftsLendingEvent, *};
-use frame_support::{
-    assert_noop, assert_ok, 
-    traits::fungible::Mutate as MutateFungible,
-};
+use frame_support::{assert_noop, assert_ok, traits::fungible::Mutate as MutateFungible};
 
 use pallet_nfts::{
-	Account, CollectionAccount, CollectionConfig, CollectionSetting, CollectionSettings, MintSettings,
+	Account, CollectionAccount, CollectionConfig, CollectionSetting, CollectionSettings,
+	MintSettings,
 };
 pub use sp_runtime::{DispatchError, ModuleError, Permill};
 
@@ -77,7 +75,7 @@ fn list_nft_should_work() {
 	new_test_ext().execute_with(|| {
 		let initial_balance = 100;
 		set_up_balances(initial_balance);
-        create_collection();
+		create_collection();
 		let mint_id = mint_item();
 		assert_ok!(NftsLending::list_nft(
 			RuntimeOrigin::signed(account(1)),
@@ -85,7 +83,7 @@ fn list_nft_should_work() {
 			mint_id,
 			2,
 			10,
-            100,
+			100,
 		));
 		// Get the items directly from the NFTs pallet, to see if has been created there
 		let mut items: Vec<_> = Account::<Test>::iter().map(|x| x.0).collect();
@@ -95,10 +93,10 @@ fn list_nft_should_work() {
 		// Read royalty pallet's storage.
 		let lendable_nft = LendableNfts::<Test>::get((0, mint_id)).unwrap();
 		assert_eq!(lendable_nft.min_period, 2);
-        assert_eq!(lendable_nft.max_period, 10);
-        assert_eq!(lendable_nft.price_per_block, 100);
+		assert_eq!(lendable_nft.max_period, 10);
+		assert_eq!(lendable_nft.price_per_block, 100);
 		assert_eq!(lendable_nft.deposit_owner, account(1));
-        assert_eq!(lendable_nft.deposit, 1);
+		assert_eq!(lendable_nft.deposit, 1);
 
 		// Check that the deposit was taken
 		assert_eq!(Balances::free_balance(&account(1)), 99);
@@ -122,17 +120,10 @@ fn list_nft_should_fail_nft_no_exist() {
 	new_test_ext().execute_with(|| {
 		let initial_balance = 100;
 		set_up_balances(initial_balance);
-        create_collection();
+		create_collection();
 		let _mint_id = mint_item();
 		assert_noop!(
-			NftsLending::list_nft(
-                RuntimeOrigin::signed(account(1)),
-                0,
-                555,
-                2,
-                10,
-                100,
-            ),
+			NftsLending::list_nft(RuntimeOrigin::signed(account(1)), 0, 555, 2, 10, 100,),
 			Error::<Test>::NftNotFound
 		);
 	});
@@ -143,18 +134,25 @@ fn list_nft_should_fail_no_owner_nft() {
 	new_test_ext().execute_with(|| {
 		let initial_balance = 100;
 		set_up_balances(initial_balance);
-        create_collection();
+		create_collection();
 		let mint_id = mint_item();
 		assert_noop!(
-			NftsLending::list_nft(
-                RuntimeOrigin::signed(account(2)),
-                0,
-                mint_id,
-                2,
-                10,
-                100,
-            ),
+			NftsLending::list_nft(RuntimeOrigin::signed(account(2)), 0, mint_id, 2, 10, 100,),
 			Error::<Test>::NoPermission
+		);
+	});
+}
+
+#[test]
+fn list_nft_should_fail_wrong_periods() {
+	new_test_ext().execute_with(|| {
+		let initial_balance = 100;
+		set_up_balances(initial_balance);
+		create_collection();
+		let mint_id = mint_item();
+		assert_noop!(
+			NftsLending::list_nft(RuntimeOrigin::signed(account(1)), 0, mint_id, 20, 10, 100,),
+			Error::<Test>::MinPeriodGreaterThanMaxPeriod
 		);
 	});
 }

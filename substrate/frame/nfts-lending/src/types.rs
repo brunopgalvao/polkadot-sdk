@@ -26,33 +26,33 @@ pub type DepositOf<T> =
 	<<T as Config>::Currency as InspectFungible<<T as SystemConfig>::AccountId>>::Balance;
 
 pub type BalanceOf<T> =
-    <<T as Config>::Currency as InspectFungible<<T as SystemConfig>::AccountId>>::Balance;
+	<<T as Config>::Currency as InspectFungible<<T as SystemConfig>::AccountId>>::Balance;
 
 /// Stores the details of a lendable NFT.
 #[derive(Decode, Encode, Default, PartialEq, Eq, MaxEncodedLen, TypeInfo)]
 pub struct Details<Balance, Deposit, AccountId> {
-    /// The minimum number of blocks the NFT can be lent.
-    pub min_period: u64,
+	/// The minimum number of blocks the NFT can be lent.
+	pub min_period: u64,
 
-    /// The maximum number of blocks the NFT can be lent.
-    pub max_period: u64,
+	/// The maximum number of blocks the NFT can be lent.
+	pub max_period: u64,
 
-    /// The lending price per block.
-    pub price_per_block: Balance,
+	/// The lending price per block.
+	pub price_per_block: Balance,
 
-    /// Reserved deposit for creating a new lendable NFT.
-    pub deposit: Deposit,
+	/// Reserved deposit for creating a new lendable NFT.
+	pub deposit: Deposit,
 
-    /// Account that created the lendable NFT.
-    pub deposit_owner: AccountId,
+	/// Account that created the lendable NFT.
+	pub deposit_owner: AccountId,
 }
 
 /// Stores the details of a lendable NFT that is being borrowed.
 #[derive(Decode, Encode, Default, PartialEq, Eq, MaxEncodedLen, TypeInfo)]
 pub struct BorrowingDetails<AccountId> {
-    /// The number of blocks the NFT is being borrowed for.
-    pub borrowing_period: u64,
+	/// The number of blocks the NFT is being borrowed for.
+	pub borrowing_period: u64,
 
-    /// Account that borrowed the lendable NFT.
-    pub borrower: AccountId,
+	/// Account that borrowed the lendable NFT.
+	pub borrower: AccountId,
 }
