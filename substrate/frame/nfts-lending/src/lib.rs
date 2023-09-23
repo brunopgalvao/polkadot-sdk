@@ -215,6 +215,9 @@ pub mod pallet {
 			// TODO: Should we check if NFT is locked already (Example from a royalties pallet)
 			Self::do_lock_nft(nft_collection_id, nft_id)?;
 
+			// Strategy #1
+			// TODO: Call NFTs pallet `approve_transfer` to allow the pallet account to transfer the NFT
+
 			LendableNfts::<T>::insert(
 				(nft_collection_id, nft_id),
 				Details {
@@ -287,6 +290,21 @@ pub mod pallet {
 				(nft_collection_id, nft_id),
 				BorrowingDetails { borrowing_period, borrower: who.clone() },
 			);
+
+			// Strategy #1
+			// Unlock the NFT
+			// Call the NFTs pallet `transfer` to transfer the NFT to the borrower
+			// And set this pallet as an approved account to transfer the NFT
+			// Problem: The borrower could remove the pallet as the approval delegate and steal the NFT
+
+			// Strategy #2
+			// Create a `force_transfer` function in the NFTs pallet with this pallet as the origin
+
+			// Strategy #3
+			// Transfer the ownership of the NFT to this pallet account
+			// Set the borrower of the NFT in the LentNfts storage
+			// Return ownership of the NFT to the lender when the borrowing period ends
+			// This is permissionless and the borrower cannot steal the NFT
 
 			// TODO: Vesting logic to be added here
 			// Vest for the borrowing period with the percentage set to the details.price_per_block
