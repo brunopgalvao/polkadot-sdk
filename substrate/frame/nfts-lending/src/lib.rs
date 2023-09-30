@@ -58,6 +58,7 @@ pub mod pallet {
 				nonfungibles_v2::{Inspect as NonFungiblesInspect, Transfer},
 				Precision::BestEffort,
 			},
+			VestingSchedule,
 		},
 	};
 	use frame_system::pallet_prelude::*;
@@ -90,6 +91,7 @@ pub mod pallet {
 
 		/// Identifier for the collection of NFT.
 		type NftCollectionId: Member + Parameter + MaxEncodedLen + Copy + Display;
+		
 		/// The type used to identify an NFT within a collection.
 		type NftId: Member + Parameter + MaxEncodedLen + Copy + Display;
 
@@ -99,6 +101,13 @@ pub mod pallet {
 				ItemId = Self::NftId,
 				CollectionId = Self::NftCollectionId,
 			> + Transfer<Self::AccountId>;
+
+		/// The pallet's id, used for deriving its sovereign account ID.
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
+
+		/// The vesting schedule for borrowed NFTs.
+		type VestingSchedule: VestingSchedule<Self::AccountId, Moment = BlockNumberFor<Self>>;
 	}
 
 	/// Storage for Nfts that are lendable
@@ -219,7 +228,10 @@ pub mod pallet {
 			// TODO: Call NFTs pallet `approve_transfer` to allow the pallet account to transfer the NFT
 
 			// Strategy #3
-			// TODO: Transfer the ownership of the NFT to this pallet account.
+			// Transfer the ownership of the NFT to this pallet account.
+			// TODO: Need a way for the owner to get the NFT back if they no longer want to lend.
+			let pallet_account = Self::get_pallet_account();
+			T::Nfts::transfer(&nft_collection_id, &nft_id, pallet_account);
 
 			LendableNfts::<T>::insert(
 				(nft_collection_id, nft_id),
@@ -229,6 +241,7 @@ pub mod pallet {
 					price_per_block,
 					deposit,
 					deposit_owner: nft_owner.clone(),
+					nft_owner: nft_owner.clone(),
 				},
 			);
 
@@ -313,6 +326,13 @@ pub mod pallet {
 			// TODO: Vesting logic to be added here
 			// Vest for the borrowing period with the percentage set to the details.price_per_block
 			// for the lendable NFT https://paritytech.github.io/polkadot-sdk/master/frame_support/traits/tokens/currency/trait.VestingSchedule.html
+			// Call T::VestingSchedule::add_vesting_schedule with the borrower as the account where locked is equal to the price_per_block and per_block is equal to the price_per_block is equal to the price_per_block and the starting block is equal to the current block number +1
+			T::VestingSchedule::add_vesting_schedule(
+				&who,
+				details.price_per_block,
+				details.price_per_block,
+				frame_system::Pallet::<T>::block_number() + 1,
+			);			
 
 			Self::deposit_event(Event::Lent {
 				nft_collection: nft_collection_id,
@@ -363,6 +383,14 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		/// The account ID of the pallet.
+		///
+		/// This actually does computation. If you need to keep using it, then make sure you cache
+		/// the value and only call this once.
+		fn get_pallet_account() -> T::AccountId {
+			T::PalletId::get().into_account_truncating()
+		}
+
 		/// Lock the NFT preventing transfers
 		fn do_lock_nft(nft_collection_id: T::NftCollectionId, nft_id: T::NftId) -> DispatchResult {
 			T::Nfts::disable_transfer(&nft_collection_id, &nft_id)

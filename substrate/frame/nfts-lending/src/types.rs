@@ -45,6 +45,9 @@ pub struct Details<Balance, Deposit, AccountId> {
 
 	/// Account that created the lendable NFT.
 	pub deposit_owner: AccountId,
+
+    /// Account that owned the NFT before it was made lendable.
+    pub nft_owner: AccountId,
 }
 
 /// Stores the details of a lendable NFT that is being borrowed.

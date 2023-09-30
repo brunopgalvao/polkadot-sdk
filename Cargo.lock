@@ -9872,6 +9872,7 @@ dependencies = [
  "frame-system",
  "log",
  "pallet-balances",
+ "pallet-nfts",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
