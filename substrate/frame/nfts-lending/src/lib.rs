@@ -218,6 +218,9 @@ pub mod pallet {
 			// Strategy #1
 			// TODO: Call NFTs pallet `approve_transfer` to allow the pallet account to transfer the NFT
 
+			// Strategy #3
+			// TODO: Transfer the ownership of the NFT to this pallet account.
+
 			LendableNfts::<T>::insert(
 				(nft_collection_id, nft_id),
 				Details {
@@ -240,7 +243,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Burn the total issuance of the fungible asset and return (unlock) the locked NFT.
+		/// Borrow an NFT that is the `LendableNfts` storage for the `borrowing_period` number of blocks.
 		///
 		/// The dispatch origin for this call must be Signed.
 		///
@@ -274,7 +277,7 @@ pub mod pallet {
 				Error::<T>::NftAlreadyLent
 			);
 
-			// Get the min_period and max_period from the LendableNfts storage
+			// Get the min_period and max_period from the `LendableNfts` storage
 			let Details { min_period, max_period, .. } =
 				LendableNfts::<T>::get((nft_collection_id, nft_id))
 					.ok_or(Error::<T>::LendableNftNotFound)?;
@@ -285,7 +288,7 @@ pub mod pallet {
 				Error::<T>::BorrowingPeriodGreaterThanMaxPeriod
 			);
 
-			// Add Lendable NFT to LentNfts storage
+			// Add Lendable NFT to `LentNfts` storage
 			LentNfts::<T>::insert(
 				(nft_collection_id, nft_id),
 				BorrowingDetails { borrowing_period, borrower: who.clone() },
@@ -304,6 +307,7 @@ pub mod pallet {
 			// Transfer the ownership of the NFT to this pallet account
 			// Set the borrower of the NFT in the LentNfts storage
 			// Return ownership of the NFT to the lender when the borrowing period ends
+			// Perhaps we can piggy-back off the vesting logic to know when the borrowing period ends
 			// This is permissionless and the borrower cannot steal the NFT
 
 			// TODO: Vesting logic to be added here
