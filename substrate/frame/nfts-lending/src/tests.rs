@@ -85,10 +85,14 @@ fn list_nft_should_work() {
 			10,
 			100,
 		));
+		let pallet_account = NftsLending::get_pallet_account();
+		// Check that the pallet is now the owner of the NFT again
+		assert_eq!(Nfts::owner(0, mint_id), Some(pallet_account.clone()));
+
 		// Get the items directly from the NFTs pallet, to see if has been created there
 		let mut items: Vec<_> = Account::<Test>::iter().map(|x| x.0).collect();
 		items.sort();
-		assert_eq!(items, vec![(account(1), 0, mint_id)]);
+		assert_eq!(items, vec![(pallet_account, 0, mint_id)]);
 
 		// Read royalty pallet's storage.
 		let lendable_nft = LendableNfts::<Test>::get((0, mint_id)).unwrap();
@@ -114,6 +118,8 @@ fn list_nft_should_work() {
 		);
 	});
 }
+
+
 
 #[test]
 fn list_nft_should_fail_nft_no_exist() {
