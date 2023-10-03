@@ -349,22 +349,16 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			ensure!(
-				T::Nfts::owner(&nft_collection_id, &nft_id) == Some(who.clone()),
-				Error::<T>::NoPermission
-			);
+			let Details { deposit, deposit_owner, nft_owner, .. } =
+				LendableNfts::<T>::get((nft_collection_id, nft_id))
+					.ok_or(Error::<T>::LendableNftNotFound)?;
 
-			ensure!(
-				LendableNfts::<T>::contains_key((nft_collection_id, nft_id)),
-				Error::<T>::LendableNftNotFound
-			);
+			ensure!(nft_owner == who.clone(),Error::<T>::NoPermission);
 
 			Self::do_unlock_nft(nft_collection_id, nft_id)?;
 			let _ = T::Nfts::transfer(&nft_collection_id, &nft_id, &who);
 
-			let Details { deposit, deposit_owner, .. } =
-				LendableNfts::<T>::take((nft_collection_id, nft_id))
-					.ok_or(Error::<T>::LendableNftNotFound)?;
+			LendableNfts::<T>::remove((nft_collection_id, nft_id));
 
 			T::Currency::release(
 				&HoldReason::LendableNft.into(),

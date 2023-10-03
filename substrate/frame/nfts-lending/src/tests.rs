@@ -162,3 +162,50 @@ fn list_nft_should_fail_wrong_periods() {
 		);
 	});
 }
+#[test]
+fn remove_from_lending_should_work() {
+	new_test_ext().execute_with(|| {
+		let initial_balance = 100;
+		set_up_balances(initial_balance);
+		create_collection();
+		let mint_id = mint_item();
+		assert_ok!(NftsLending::list_nft(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			mint_id,
+			2,
+			10,
+			100,
+		));
+		let pallet_account = NftsLending::get_pallet_account();
+		// Get the items directly from the NFTs pallet, to see if has been created there
+		let mut items: Vec<_> = Account::<Test>::iter().map(|x| x.0).collect();
+		items.sort();
+		assert_eq!(items, vec![(pallet_account, 0, mint_id)]);
+
+		// Check that the deposit was taken
+		assert_eq!(Balances::free_balance(&account(1)), 99);
+
+		assert_ok!(NftsLending::remove_from_lending(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			mint_id,
+		));
+
+		// Check that the deposit is back
+		assert_eq!(Balances::free_balance(&account(1)), 100);
+
+		// Check that I am the owner of the NFT again
+		assert_eq!(Nfts::owner(0, mint_id), Some(account(1)));
+
+		// Check the event was emitted
+		assert_eq!(
+			last_event(),
+			NftsLendingEvent::NotLendable {
+				nft_collection: 0,
+				nft_id: mint_id,
+			}
+		);
+	});
+}
+
