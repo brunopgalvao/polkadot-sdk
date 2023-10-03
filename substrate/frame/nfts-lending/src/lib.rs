@@ -21,15 +21,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod types;
-
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+
 #[cfg(test)]
 pub mod mock;
 #[cfg(test)]
 mod tests;
-
-pub mod weights;
 
 use frame_system::Config as SystemConfig;
 
@@ -49,6 +47,7 @@ pub mod pallet {
 		dispatch::DispatchResult,
 		ensure,
 		pallet_prelude::*,
+		sp_runtime::traits::AccountIdConversion,
 		traits::{
 			fungible::{
 				hold::Mutate as HoldMutateFungible, Inspect as InspectFungible,
@@ -58,8 +57,9 @@ pub mod pallet {
 				nonfungibles_v2::{Inspect as NonFungiblesInspect, Transfer},
 				Precision::BestEffort,
 			},
-			VestingSchedule,
+			VestingSchedule
 		},
+		PalletId,
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_std::{fmt::Display, prelude::*};
@@ -106,8 +106,8 @@ pub mod pallet {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
-		/// The vesting schedule for borrowed NFTs.
-		type VestingSchedule: VestingSchedule<Self::AccountId, Moment = BlockNumberFor<Self>>;
+		// The vesting schedule for borrowed NFTs.
+		// type VestingSchedule: VestingSchedule<Self::AccountId, Moment = BlockNumberFor<Self>>;
 	}
 
 	/// Storage for Nfts that are lendable
@@ -231,7 +231,7 @@ pub mod pallet {
 			// Transfer the ownership of the NFT to this pallet account.
 			// TODO: Need a way for the owner to get the NFT back if they no longer want to lend.
 			let pallet_account = Self::get_pallet_account();
-			T::Nfts::transfer(&nft_collection_id, &nft_id, pallet_account);
+			T::Nfts::transfer(&nft_collection_id, &nft_id, &pallet_account);
 
 			LendableNfts::<T>::insert(
 				(nft_collection_id, nft_id),
@@ -291,7 +291,7 @@ pub mod pallet {
 			);
 
 			// Get the min_period and max_period from the `LendableNfts` storage
-			let Details { min_period, max_period, .. } =
+			let Details { min_period, max_period, price_per_block, .. } =
 				LendableNfts::<T>::get((nft_collection_id, nft_id))
 					.ok_or(Error::<T>::LendableNftNotFound)?;
 
@@ -327,12 +327,12 @@ pub mod pallet {
 			// Vest for the borrowing period with the percentage set to the details.price_per_block
 			// for the lendable NFT https://paritytech.github.io/polkadot-sdk/master/frame_support/traits/tokens/currency/trait.VestingSchedule.html
 			// Call T::VestingSchedule::add_vesting_schedule with the borrower as the account where locked is equal to the price_per_block and per_block is equal to the price_per_block is equal to the price_per_block and the starting block is equal to the current block number +1
-			T::VestingSchedule::add_vesting_schedule(
-				&who,
-				details.price_per_block,
-				details.price_per_block,
-				frame_system::Pallet::<T>::block_number() + 1,
-			);			
+			// T::VestingSchedule::add_vesting_schedule(
+			// 	&who,
+			// 	price_per_block,
+			// 	price_per_block,
+			// 	frame_system::Pallet::<T>::block_number(),
+			// );		
 
 			Self::deposit_event(Event::Lent {
 				nft_collection: nft_collection_id,

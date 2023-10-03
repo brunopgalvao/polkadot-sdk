@@ -23,6 +23,7 @@ use crate as pallet_nfts_lending;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU32, ConstU64},
+	PalletId,
 };
 use pallet_nfts::PalletFeatures;
 use sp_core::H256;
@@ -126,6 +127,9 @@ impl pallet_nfts::Config for Test {
 	}
 }
 
+parameter_types! {
+	pub const NftLendingPalletId: PalletId = PalletId(*b"lendnfts");
+}
 impl Config for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
@@ -134,6 +138,7 @@ impl Config for Test {
 	type NftCollectionId = <Self as pallet_nfts::Config>::CollectionId;
 	type NftId = <Self as pallet_nfts::Config>::ItemId;
 	type Nfts = Nfts;
+	type PalletId = NftLendingPalletId;
 }
 
 // Build genesis storage according to the mock runtime.
