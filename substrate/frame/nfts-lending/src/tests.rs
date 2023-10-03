@@ -119,8 +119,6 @@ fn list_nft_should_work() {
 	});
 }
 
-
-
 #[test]
 fn list_nft_should_fail_nft_no_exist() {
 	new_test_ext().execute_with(|| {
@@ -186,11 +184,9 @@ fn remove_from_lending_should_work() {
 		// Check that the deposit was taken
 		assert_eq!(Balances::free_balance(&account(1)), 99);
 
-		assert_ok!(NftsLending::remove_from_lending(
-			RuntimeOrigin::signed(account(1)),
-			0,
-			mint_id,
-		));
+		assert_ok!(
+			NftsLending::remove_from_lending(RuntimeOrigin::signed(account(1)), 0, mint_id,)
+		);
 
 		// Check that the deposit is back
 		assert_eq!(Balances::free_balance(&account(1)), 100);
@@ -201,11 +197,42 @@ fn remove_from_lending_should_work() {
 		// Check the event was emitted
 		assert_eq!(
 			last_event(),
-			NftsLendingEvent::NotLendable {
-				nft_collection: 0,
-				nft_id: mint_id,
-			}
+			NftsLendingEvent::NotLendable { nft_collection: 0, nft_id: mint_id }
+		);
+	});
+}
+#[test]
+fn remove_from_lending_should_fail_nft_not_listed() {
+	new_test_ext().execute_with(|| {
+		let initial_balance = 100;
+		set_up_balances(initial_balance);
+		create_collection();
+		let mint_id = mint_item();
+		assert_noop!(
+			NftsLending::remove_from_lending(RuntimeOrigin::signed(account(1)), 0, mint_id),
+			Error::<Test>::LendableNftNotFound
 		);
 	});
 }
 
+#[test]
+fn remove_from_lending_should_fail_no_owner() {
+	new_test_ext().execute_with(|| {
+		let initial_balance = 100;
+		set_up_balances(initial_balance);
+		create_collection();
+		let mint_id = mint_item();
+		assert_ok!(NftsLending::list_nft(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			mint_id,
+			2,
+			10,
+			100,
+		));
+		assert_noop!(
+			NftsLending::remove_from_lending(RuntimeOrigin::signed(account(2)), 0, mint_id),
+			Error::<Test>::NoPermission
+		);
+	});
+}

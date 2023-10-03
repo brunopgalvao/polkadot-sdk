@@ -353,7 +353,7 @@ pub mod pallet {
 				LendableNfts::<T>::get((nft_collection_id, nft_id))
 					.ok_or(Error::<T>::LendableNftNotFound)?;
 
-			ensure!(nft_owner == who.clone(),Error::<T>::NoPermission);
+			ensure!(nft_owner == who.clone(), Error::<T>::NoPermission);
 
 			Self::do_unlock_nft(nft_collection_id, nft_id)?;
 			let _ = T::Nfts::transfer(&nft_collection_id, &nft_id, &who);
@@ -396,4 +396,3 @@ pub mod pallet {
 		}
 	}
 }
-
