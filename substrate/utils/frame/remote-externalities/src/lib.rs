@@ -21,7 +21,6 @@
 //! based chain, or a local state snapshot file.
 
 use tokio::task;
-use std::sync::Arc;
 use codec::{Compact, Decode, Encode};
 use indicatif::{ProgressBar, ProgressStyle};
 use jsonrpsee::{
