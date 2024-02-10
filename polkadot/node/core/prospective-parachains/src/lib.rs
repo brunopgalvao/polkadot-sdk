@@ -22,7 +22,7 @@
 //! backing phases of parachain consensus.
 //!
 //! This is primarily an implementation of "Fragment Trees", as described in
-//! [`polkadot_node_subsystem_util::inclusion_emulator::staging`].
+//! [`polkadot_node_subsystem_util::inclusion_emulator`].
 //!
 //! This subsystem also handles concerns such as the relay-chain being forkful and session changes.
 
@@ -42,13 +42,14 @@ use polkadot_node_subsystem::{
 	overseer, ActiveLeavesUpdate, FromOrchestra, OverseerSignal, SpawnedSubsystem, SubsystemError,
 };
 use polkadot_node_subsystem_util::{
-	inclusion_emulator::staging::{Constraints, RelayChainBlockInfo},
+	inclusion_emulator::{Constraints, RelayChainBlockInfo},
 	request_session_index_for_child,
 	runtime::{prospective_parachains_mode, ProspectiveParachainsMode},
 };
-use polkadot_primitives::vstaging::{
-	BlockNumber, CandidateHash, CandidatePendingAvailability, CommittedCandidateReceipt, CoreState,
-	Hash, HeadData, Header, Id as ParaId, PersistedValidationData,
+use polkadot_primitives::{
+	async_backing::CandidatePendingAvailability, BlockNumber, CandidateHash,
+	CommittedCandidateReceipt, CoreState, Hash, HeadData, Header, Id as ParaId,
+	PersistedValidationData,
 };
 
 use crate::{
@@ -145,12 +146,20 @@ async fn run_iteration<Context>(
 					handle_candidate_seconded(view, para, candidate_hash),
 				ProspectiveParachainsMessage::CandidateBacked(para, candidate_hash) =>
 					handle_candidate_backed(&mut *ctx, view, para, candidate_hash).await?,
-				ProspectiveParachainsMessage::GetBackableCandidate(
+				ProspectiveParachainsMessage::GetBackableCandidates(
 					relay_parent,
 					para,
+					count,
 					required_path,
 					tx,
-				) => answer_get_backable_candidate(&view, relay_parent, para, required_path, tx),
+				) => answer_get_backable_candidates(
+					&view,
+					relay_parent,
+					para,
+					count,
+					required_path,
+					tx,
+				),
 				ProspectiveParachainsMessage::GetHypotheticalFrontier(request, tx) =>
 					answer_hypothetical_frontier_request(&view, request, tx),
 				ProspectiveParachainsMessage::GetTreeMembership(para, candidate, tx) =>
@@ -288,6 +297,14 @@ async fn handle_active_leaves_update<Context>(
 				ancestry.iter().cloned(),
 			)
 			.expect("ancestors are provided in reverse order and correctly; qed");
+
+			gum::debug!(
+				target: LOG_TARGET,
+				relay_parent = ?hash,
+				min_relay_parent = scope.earliest_relay_parent().number,
+				para_id = ?para,
+				"Creating fragment tree"
+			);
 
 			let tree = FragmentTree::populate(scope, &*candidate_storage);
 
@@ -543,12 +560,13 @@ async fn handle_candidate_backed<Context>(
 	Ok(())
 }
 
-fn answer_get_backable_candidate(
+fn answer_get_backable_candidates(
 	view: &View,
 	relay_parent: Hash,
 	para: ParaId,
+	count: u32,
 	required_path: Vec<CandidateHash>,
-	tx: oneshot::Sender<Option<(CandidateHash, Hash)>>,
+	tx: oneshot::Sender<Vec<(CandidateHash, Hash)>>,
 ) {
 	let data = match view.active_leaves.get(&relay_parent) {
 		None => {
@@ -559,7 +577,7 @@ fn answer_get_backable_candidate(
 				"Requested backable candidate for inactive relay-parent."
 			);
 
-			let _ = tx.send(None);
+			let _ = tx.send(vec![]);
 			return
 		},
 		Some(d) => d,
@@ -574,7 +592,7 @@ fn answer_get_backable_candidate(
 				"Requested backable candidate for inactive para."
 			);
 
-			let _ = tx.send(None);
+			let _ = tx.send(vec![]);
 			return
 		},
 		Some(tree) => tree,
@@ -589,30 +607,49 @@ fn answer_get_backable_candidate(
 				"No candidate storage for active para",
 			);
 
-			let _ = tx.send(None);
+			let _ = tx.send(vec![]);
 			return
 		},
 		Some(s) => s,
 	};
 
-	let Some(child_hash) =
-		tree.select_child(&required_path, |candidate| storage.is_backed(candidate))
-	else {
-		let _ = tx.send(None);
-		return
-	};
-	let Some(candidate_relay_parent) = storage.relay_parent_by_candidate_hash(&child_hash) else {
-		gum::error!(
-			target: LOG_TARGET,
-			?child_hash,
-			para_id = ?para,
-			"Candidate is present in fragment tree but not in candidate's storage!",
-		);
-		let _ = tx.send(None);
-		return
-	};
+	let backable_candidates: Vec<_> = tree
+		.select_children(&required_path, count, |candidate| storage.is_backed(candidate))
+		.into_iter()
+		.filter_map(|child_hash| {
+			storage.relay_parent_by_candidate_hash(&child_hash).map_or_else(
+				|| {
+					gum::error!(
+						target: LOG_TARGET,
+						?child_hash,
+						para_id = ?para,
+						"Candidate is present in fragment tree but not in candidate's storage!",
+					);
+					None
+				},
+				|parent_hash| Some((child_hash, parent_hash)),
+			)
+		})
+		.collect();
 
-	let _ = tx.send(Some((child_hash, candidate_relay_parent)));
+	if backable_candidates.is_empty() {
+		gum::trace!(
+			target: LOG_TARGET,
+			?required_path,
+			para_id = ?para,
+			%relay_parent,
+			"Could not find any backable candidate",
+		);
+	} else {
+		gum::trace!(
+			target: LOG_TARGET,
+			?relay_parent,
+			?backable_candidates,
+			"Found backable candidates",
+		);
+	}
+
+	let _ = tx.send(backable_candidates);
 }
 
 fn answer_hypothetical_frontier_request(
@@ -792,7 +829,7 @@ async fn fetch_backing_state<Context>(
 	let (tx, rx) = oneshot::channel();
 	ctx.send_message(RuntimeApiMessage::Request(
 		relay_parent,
-		RuntimeApiRequest::StagingParaBackingState(para_id, tx),
+		RuntimeApiRequest::ParaBackingState(para_id, tx),
 	))
 	.await;
 

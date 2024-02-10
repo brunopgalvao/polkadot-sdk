@@ -19,6 +19,7 @@
 
 use super::*;
 use codec::{Decode, Encode, EncodeLike, MaxEncodedLen};
+use core::fmt::Debug;
 use frame_support::{
 	traits::{schedule::v3::Anon, Bounded},
 	Parameter,
@@ -26,7 +27,6 @@ use frame_support::{
 use scale_info::TypeInfo;
 use sp_arithmetic::{Rounding::*, SignedRounding::*};
 use sp_runtime::{FixedI64, PerThing, RuntimeDebug};
-use sp_std::fmt::Debug;
 
 pub type BalanceOf<T, I = ()> =
 	<<T as Config<I>>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -34,7 +34,8 @@ pub type NegativeImbalanceOf<T, I> = <<T as Config<I>>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::NegativeImbalance;
 pub type CallOf<T, I> = <T as Config<I>>::RuntimeCall;
-pub type BoundedCallOf<T, I> = Bounded<<T as Config<I>>::RuntimeCall>;
+pub type BoundedCallOf<T, I> =
+	Bounded<<T as Config<I>>::RuntimeCall, <T as frame_system::Config>::Hashing>;
 pub type VotesOf<T, I> = <T as Config<I>>::Votes;
 pub type TallyOf<T, I> = <T as Config<I>>::Tally;
 pub type PalletsOriginOf<T> =
