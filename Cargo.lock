@@ -10211,6 +10211,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-nfts-lending"
+version = "4.0.0-dev"
+dependencies = [
+ "enumflags2",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-balances",
+ "pallet-nfts",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-nfts-runtime-api"
 version = "14.0.0"
 dependencies = [
