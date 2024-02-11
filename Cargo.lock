@@ -5604,6 +5604,7 @@ dependencies = [
  "indicatif",
  "jsonrpsee",
  "log",
+ "once_cell",
  "parity-scale-codec",
  "serde",
  "sp-core",
@@ -10227,7 +10228,7 @@ dependencies = [
  "sp-io",
  "sp-keystore",
  "sp-runtime",
- "sp-std",
+ "sp-std 14.0.0",
 ]
 
 [[package]]
