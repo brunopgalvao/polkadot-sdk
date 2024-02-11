@@ -354,7 +354,6 @@ members = [
 	"substrate/frame/multisig",
 	"substrate/frame/nft-fractionalization",
 	"substrate/frame/nfts",
-	"substrate/frame/nfts-lending",
 	"substrate/frame/nfts/runtime-api",
 	"substrate/frame/nis",
 	"substrate/frame/node-authorization",
