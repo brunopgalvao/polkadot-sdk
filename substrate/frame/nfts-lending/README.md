@@ -1,0 +1,1 @@
+# NFTs lending pallet
