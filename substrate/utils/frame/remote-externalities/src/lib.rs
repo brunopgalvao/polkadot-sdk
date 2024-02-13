@@ -1291,7 +1291,11 @@ mod tests {
 #[cfg(all(test, feature = "remote-test"))]
 mod remote_tests {
 	use super::test_prelude::*;
-	use std::os::unix::fs::MetadataExt;
+	use std::{env, os::unix::fs::MetadataExt};
+
+	fn endpoint() -> String {
+		env::var("TEST_WS").unwrap_or_else(|_| DEFAULT_HTTP_ENDPOINT.to_string())
+	}
 
 	#[tokio::test]
 	async fn state_version_is_kept_and_can_be_altered() {
@@ -1301,6 +1305,7 @@ mod remote_tests {
 		// first, build a snapshot.
 		let ext = Builder::<Block>::new()
 			.mode(Mode::Online(OnlineConfig {
+				transport: endpoint().clone().into(),
 				pallets: vec!["Proxy".to_owned()],
 				child_trie: false,
 				state_snapshot: Some(SnapshotConfig::new(CACHE)),
@@ -1342,6 +1347,7 @@ mod remote_tests {
 		// first, build a snapshot.
 		let ext = Builder::<Block>::new()
 			.mode(Mode::Online(OnlineConfig {
+				transport: endpoint().clone().into(),
 				pallets: vec!["Proxy".to_owned()],
 				child_trie: false,
 				state_snapshot: Some(SnapshotConfig::new(CACHE)),
@@ -1369,6 +1375,7 @@ mod remote_tests {
 		// create an ext with children keys
 		let child_ext = Builder::<Block>::new()
 			.mode(Mode::Online(OnlineConfig {
+				transport: endpoint().clone().into(),
 				pallets: vec!["Proxy".to_owned()],
 				child_trie: true,
 				state_snapshot: Some(SnapshotConfig::new(CACHE)),
@@ -1381,6 +1388,7 @@ mod remote_tests {
 		// create an ext without children keys
 		let ext = Builder::<Block>::new()
 			.mode(Mode::Online(OnlineConfig {
+				transport: endpoint().clone().into(),
 				pallets: vec!["Proxy".to_owned()],
 				child_trie: false,
 				state_snapshot: Some(SnapshotConfig::new(CACHE)),
@@ -1406,6 +1414,7 @@ mod remote_tests {
 			.mode(Mode::OfflineOrElseOnline(
 				OfflineConfig { state_snapshot: SnapshotConfig::new(CACHE) },
 				OnlineConfig {
+					transport: endpoint().clone().into(),
 					pallets: vec!["Proxy".to_owned()],
 					child_trie: false,
 					state_snapshot: Some(SnapshotConfig::new(CACHE)),
@@ -1447,6 +1456,7 @@ mod remote_tests {
 		init_logger();
 		Builder::<Block>::new()
 			.mode(Mode::Online(OnlineConfig {
+				transport: endpoint().clone().into(),
 				pallets: vec!["Proxy".to_owned()],
 				child_trie: false,
 				..Default::default()
@@ -1462,6 +1472,7 @@ mod remote_tests {
 		init_logger();
 		Builder::<Block>::new()
 			.mode(Mode::Online(OnlineConfig {
+				transport: endpoint().clone().into(),
 				pallets: vec!["Proxy".to_owned(), "Multisig".to_owned()],
 				child_trie: false,
 				..Default::default()
@@ -1479,6 +1490,7 @@ mod remote_tests {
 
 		Builder::<Block>::new()
 			.mode(Mode::Online(OnlineConfig {
+				transport: endpoint().clone().into(),
 				state_snapshot: Some(SnapshotConfig::new(CACHE)),
 				pallets: vec!["Proxy".to_owned()],
 				child_trie: false,
@@ -1508,6 +1520,7 @@ mod remote_tests {
 		init_logger();
 		Builder::<Block>::new()
 			.mode(Mode::Online(OnlineConfig {
+				transport: endpoint().clone().into(),
 				state_snapshot: Some(SnapshotConfig::new(CACHE)),
 				pallets: vec!["Crowdloan".to_owned()],
 				child_trie: true,
@@ -1539,7 +1552,7 @@ mod remote_tests {
 		init_logger();
 		Builder::<Block>::new()
 			.mode(Mode::Online(OnlineConfig {
-				transport: std::option_env!("TEST_WS").unwrap().to_owned().into(),
+				transport: endpoint().clone().into(),
 				pallets: vec!["Staking".to_owned()],
 				child_trie: false,
 				..Default::default()
@@ -1558,7 +1571,7 @@ mod remote_tests {
 		init_logger();
 		Builder::<Block>::new()
 			.mode(Mode::Online(OnlineConfig {
-				transport: std::option_env!("TEST_WS").unwrap().to_owned().into(),
+				transport: endpoint().clone().into(),
 				..Default::default()
 			}))
 			.build()
@@ -1571,9 +1584,10 @@ mod remote_tests {
 	async fn can_fetch_in_parallel() {
 		init_logger();
 
-		let uri = String::from("wss://kusama-bridge-hub-rpc.polkadot.io:443");
-		let mut builder = Builder::<Block>::new()
-			.mode(Mode::Online(OnlineConfig { transport: uri.into(), ..Default::default() }));
+		let mut builder = Builder::<Block>::new().mode(Mode::Online(OnlineConfig {
+			transport: endpoint().clone().into(),
+			..Default::default()
+		}));
 		builder.init_remote_client().await.unwrap();
 
 		let at = builder.as_online().at.unwrap();
